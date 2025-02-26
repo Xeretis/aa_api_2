@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using WebApi.Data;
 using WebApi.Models;
 
@@ -22,15 +24,27 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    app.MapOpenApi();
-}
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+app.MapOpenApi();
+app.MapScalarApiReference();
+
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 
 app.Use(async (context, next) =>
 {
+    var path = context.Request.Path.Value ?? "";
+    
+    if (path.StartsWith("/scalar") || path.StartsWith("/openapi"))
+    {
+        await next();
+        return;
+    }
+    
     var apiKey = context.Request.Headers["X-API-Key"].FirstOrDefault();
     var validApiKey = "api-key-12345";
 

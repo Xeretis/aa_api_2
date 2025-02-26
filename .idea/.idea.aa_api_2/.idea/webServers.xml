@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="14def332-6588-4a53-bb49-5a6ebd8244bf" name="MonsterASP" url="site18847.siteasp.net ">
+        <fileTransfer accessType="SFTP" host="site18847.siteasp.net" port="22" sshConfigId="02b480de-c8a7-4dc9-a361-34fd799e4c2e" sshConfig="site18847@site18847.siteasp.net:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

@@ -1,0 +1,50 @@
+name: Deploy .NET API to Alpine Server
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0'  # Update to your .NET version
+  REMOTE_APP_DIR: '/www/aa_api_2'
+  REMOTE_USER: 'xeretis'
+  REMOTE_HOST: 'aa-api.bluemin.de'
+  NGINX_CONF_FILE: 'aa-api-nginx.conf'
+  SERVICE_FILE: 'dotnet-webapi.initd'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Publish
+        run: dotnet publish --no-build --configuration Release --output ./publish
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.REMOTE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        run: |
+          rsync -avz --exclude='todos.db' --delete ./publish/ ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}:${{ env.REMOTE_APP_DIR }}/
+          
+          ssh ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }} "sudo rc-update add ${{ env.APP_NAME }} default && sudo rc-service ${{ env.APP_NAME }} restart && sudo rc-service nginx reload"
