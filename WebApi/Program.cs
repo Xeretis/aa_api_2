@@ -12,7 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<TodoDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.LogTo(Console.WriteLine, LogLevel.Information);
+    options.EnableSensitiveDataLogging();
+    options.EnableDetailedErrors();
+});
 
 builder.Services.AddCors(options =>
 {
