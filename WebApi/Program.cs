@@ -15,7 +15,7 @@ Console.WriteLine(builder.Environment.ContentRootPath);
 // Configure LiteDB
 builder.Services.AddSingleton<ILiteDatabase>(serviceProvider =>
 {
-    var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Todos.db");
+    var dbPath = builder.Environment.IsProduction() ? Path.Combine("/www/aa_api_2/", "Todos.db") : Path.Combine(builder.Environment.ContentRootPath, "Todos.db");
     return new LiteDatabase($"{dbPath}");
 });
 
