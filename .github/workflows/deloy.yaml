@@ -11,8 +11,6 @@ env:
   REMOTE_APP_DIR: '/www/aa_api_2'
   REMOTE_USER: 'xeretis'
   REMOTE_HOST: 'aa-api.bluemin.de'
-  NGINX_CONF_FILE: 'aa-api-nginx.conf'
-  SERVICE_FILE: 'dotnet-webapi.initd'
 
 jobs:
   build-and-deploy:
@@ -45,6 +43,8 @@ jobs:
 
       - name: Deploy to server
         run: |
-          rsync -avz --exclude='todos.db' --delete ./publish/ ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}:${{ env.REMOTE_APP_DIR }}/
+          sudo -u www bash << 'WWWEOF'
+            rsync -avz --exclude='todos.db' --delete ./publish/ ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}:${{ env.REMOTE_APP_DIR }}/
+          WWWEOF
           
           ssh ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }} "sudo rc-update add ${{ env.APP_NAME }} default && sudo rc-service ${{ env.APP_NAME }} restart && sudo rc-service nginx reload"
