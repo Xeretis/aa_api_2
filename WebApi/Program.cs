@@ -9,6 +9,9 @@ using WebApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var testFile = Path.Combine(Directory.GetCurrentDirectory(), "test_write.tmp");
+File.WriteAllText(testFile, "test");
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<TodoDbContext>(options =>
