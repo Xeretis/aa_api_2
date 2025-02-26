@@ -9,11 +9,6 @@ using WebApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var testFile = Path.Combine(Directory.GetCurrentDirectory(), "test_write.tmp");
-File.WriteAllText(testFile, "test");
-
-Console.WriteLine(Directory.GetCurrentDirectory());
-
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<TodoDbContext>(options =>
@@ -41,7 +36,7 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<TodoDbContext>();
     var res = dbContext.Database.EnsureCreated();
     app.Logger.LogInformation(res.ToString());
-    app.Logger.LogInformation(JsonSerializer.Serialize(await dbContext.Todos.FirstOrDefaultAsync()));
+    app.Logger.LogInformation(JsonSerializer.Serialize(dbContext.Todos.FirstOrDefault()));
 }
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
