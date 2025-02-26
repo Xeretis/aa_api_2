@@ -1,23 +1,26 @@
-using System.Text;
-using System.Text.Json;
+using LiteDB;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using WebApi.Data;
 using WebApi.Models;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddDbContext<TodoDbContext>(options =>
+Console.WriteLine(builder.Environment.ContentRootPath);
+
+// Configure LiteDB
+builder.Services.AddSingleton<ILiteDatabase>(serviceProvider =>
 {
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
-    options.LogTo(Console.WriteLine, LogLevel.Information);
-    options.EnableSensitiveDataLogging();
-    options.EnableDetailedErrors();
+    var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Todos.db");
+    return new LiteDatabase($"{dbPath}");
 });
+
+// Register TodoRepository
+builder.Services.AddScoped<ITodoRepository, TodoRepository>();
 
 builder.Services.AddCors(options =>
 {
@@ -31,12 +34,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Initialize database and verify connection
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<TodoDbContext>();
-    var res = dbContext.Database.EnsureCreated();
-    app.Logger.LogInformation(res.ToString());
-    app.Logger.LogInformation(JsonSerializer.Serialize(dbContext.Todos.FirstOrDefault()));
+    var repository = scope.ServiceProvider.GetRequiredService<ITodoRepository>();
+    var todos = repository.GetAll().ToList();
+    app.Logger.LogInformation($"Database initialized. Found {todos.Count} todos.");
+    app.Logger.LogInformation(JsonSerializer.Serialize(todos.FirstOrDefault()));
 }
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -81,28 +85,25 @@ app.MapGet("/todos", async (
         [FromQuery] string? title,
         [FromQuery] bool? isCompleted,
         [FromQuery] DateTime? dueDate,
-        TodoDbContext dbContext) =>
+        ITodoRepository repository) =>
     {
-        var query = dbContext.Todos.AsQueryable();
+        var allTodos = repository.GetAll();
 
-        if (!string.IsNullOrEmpty(title))
-            query = query.Where(t => t.Title.Contains(title));
+        // Apply filters
+        var filteredTodos = allTodos
+            .Where(t => string.IsNullOrEmpty(title) || t.Title.Contains(title))
+            .Where(t => !isCompleted.HasValue || t.IsCompleted == isCompleted.Value)
+            .Where(t => !dueDate.HasValue || t.DueDate.Date == dueDate.Value.Date)
+            .ToList();
 
-        if (isCompleted.HasValue)
-            query = query.Where(t => t.IsCompleted == isCompleted.Value);
-
-        if (dueDate.HasValue)
-            query = query.Where(t => t.DueDate.Date == dueDate.Value.Date);
-
-        var todos = await query.ToListAsync();
-        return Results.Ok(todos);
+        return Results.Ok(filteredTodos);
     })
     .WithName("GetTodos")
     .WithOpenApi()
     .Produces<List<Todo>>(200)
     .Produces(401);
 
-app.MapPost("/todos", async ([FromBody] TodoCreateDto todoDto, TodoDbContext dbContext) =>
+app.MapPost("/todos", async ([FromBody] TodoCreateDto todoDto, ITodoRepository repository) =>
     {
         if (string.IsNullOrEmpty(todoDto.Title))
             return Results.BadRequest("Title is required");
@@ -112,13 +113,12 @@ app.MapPost("/todos", async ([FromBody] TodoCreateDto todoDto, TodoDbContext dbC
             Title = todoDto.Title,
             Description = todoDto.Description,
             IsCompleted = todoDto.IsCompleted,
-            DueDate = todoDto.DueDate
+            DueDate = todoDto.DueDate,
+            CreatedAt = DateTime.UtcNow
         };
 
-        dbContext.Todos.Add(todo);
-        await dbContext.SaveChangesAsync();
-
-        return Results.Created($"/todos/{todo.Id}", todo);
+        var created = repository.Create(todo);
+        return Results.Created($"/todos/{created.Id}", created);
     })
     .WithName("CreateTodo")
     .WithOpenApi()
@@ -126,9 +126,9 @@ app.MapPost("/todos", async ([FromBody] TodoCreateDto todoDto, TodoDbContext dbC
     .Produces(400)
     .Produces(401);
 
-app.MapPatch("/todos/{id}", async (int id, [FromBody] TodoUpdateDto todoDto, TodoDbContext dbContext) =>
+app.MapPatch("/todos/{id}", async (int id, [FromBody] TodoUpdateDto todoDto, ITodoRepository repository) =>
     {
-        var todo = await dbContext.Todos.FindAsync(id);
+        var todo = repository.GetById(id);
     
         if (todo == null)
             return Results.NotFound(new { message = $"Todo with ID {id} not found" });
@@ -145,7 +145,9 @@ app.MapPatch("/todos/{id}", async (int id, [FromBody] TodoUpdateDto todoDto, Tod
         if (todoDto.DueDate.HasValue)
             todo.DueDate = todoDto.DueDate.Value;
     
-        await dbContext.SaveChangesAsync();
+        var success = repository.Update(todo);
+        if (!success)
+            return Results.StatusCode(500);
     
         return Results.Ok(todo);
     })
@@ -153,7 +155,8 @@ app.MapPatch("/todos/{id}", async (int id, [FromBody] TodoUpdateDto todoDto, Tod
     .WithOpenApi()
     .Produces<Todo>(200)
     .Produces(404)
-    .Produces(401);
+    .Produces(401)
+    .Produces(500);
 
 app.MapGet("/", () => 
 {
