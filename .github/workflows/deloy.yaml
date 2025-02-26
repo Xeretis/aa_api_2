@@ -13,6 +13,7 @@ env:
   REMOTE_HOST: 'aa-api.bluemin.de'
   NGINX_CONF_FILE: 'aa-api-nginx.conf'
   SERVICE_FILE: 'dotnet-webapi.initd'
+  APP_NAME: 'aa_api_2'
 
 jobs:
   build-and-deploy:
