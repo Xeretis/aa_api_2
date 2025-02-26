@@ -47,6 +47,9 @@ foreach (var path in possibleDbPaths)
     }
 }
 
+Console.WriteLine("Path tests:");
+Console.WriteLine(pathLog.ToString());
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<TodoDbContext>(options =>
