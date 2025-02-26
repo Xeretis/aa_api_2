@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,45 @@ using WebApi.Data;
 using WebApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var possibleDbPaths = new[]
+{
+    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "todos.db"),
+    Path.Combine(Directory.GetCurrentDirectory(), "todos.db"),
+    Path.Combine(Path.GetTempPath(), "todos.db"), // Temp directory should be writable
+    "/tmp/todos.db" // Linux temp directory
+};
+
+// Try to find a writable path
+string dbPath = null;
+StringBuilder pathLog = new StringBuilder();
+
+foreach (var path in possibleDbPaths)
+{
+    pathLog.AppendLine($"Trying path: {path}");
+    try
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!Directory.Exists(directory))
+        {
+            pathLog.AppendLine($"Directory {directory} doesn't exist, skipping...");
+            continue;
+        }
+
+        // Check if we can write to this directory
+        var testFile = Path.Combine(directory, $"test_write_{Guid.NewGuid()}.tmp");
+        File.WriteAllText(testFile, "test");
+        File.Delete(testFile);
+        
+        dbPath = path;
+        pathLog.AppendLine($"Found writable path: {dbPath}");
+        break;
+    }
+    catch (Exception ex)
+    {
+        pathLog.AppendLine($"Error with path {path}: {ex.Message}");
+    }
+}
 
 builder.Services.AddOpenApi();
 
