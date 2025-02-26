@@ -14,13 +14,20 @@ public class TodoDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Todo>(entity => 
+        {
+            entity.ToTable("Todos");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired();
+        });
+        
         // Seed some sample data
         modelBuilder.Entity<Todo>().HasData(
             new Todo
             {
                 Id = 1,
                 Title = "API hitelesítés tanulása",
-                Description = "Tanulmányozni, hogyan használjunk API kulcsokat a header-ben",
+                Description = "Megtanulni, hogyan használjunk API kulcsokat a header-ben",
                 IsCompleted = false,
                 DueDate = DateTime.Now.AddDays(3),
                 CreatedAt = DateTime.Now

@@ -24,6 +24,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.Logger.LogInformation(AppDomain.CurrentDomain.BaseDirectory);
+
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
