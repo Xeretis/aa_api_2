@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,7 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<TodoDbContext>();
     var res = dbContext.Database.EnsureCreated();
     app.Logger.LogInformation(res.ToString());
-
+    app.Logger.LogInformation(JsonSerializer.Serialize(await dbContext.Todos.FirstOrDefaultAsync()));
 }
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
