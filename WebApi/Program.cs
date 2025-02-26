@@ -30,7 +30,11 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 });
 
 app.MapOpenApi();
-app.MapScalarApiReference();
+app.MapScalarApiReference(o => 
+{
+    o.WithCdnUrl("https://cdn.jsdelivr.net/npm/@scalar/api-reference");
+    o.AddServer("https://aa-api.bluemin.de");
+});
 
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
